@@ -132,3 +132,20 @@ For submitting your work, you should follow these steps:
 #### Modeling Your Code: Communicating Sequential Processes
 - [Golang Concurrency Patterns](https://www.karanpratapsingh.com/courses/go/advanced-concurrency-patterns)
 - [Pipelines and cancellation](https://go.dev/blog/pipelines)
+
+# Challenge results
+### Time for sequential services
+1. (POST) /api/provide
+ - Process 100 ids
+ ![Screenshot](sequential_post.png)
+2. (PUT) /api/refresh-cache
+ - Process 40 records
+ ![Screenshot](sequential_put.png)
+
+### Time for concurrency service
+1. (POST) /api/provide
+ - Process 100 ids
+ ![Screenshot](concurrency_post.png)
+2. (PUT) /api/refresh-cache
+ - Process 40 records
+ ![Screenshot](concurrency_put.png)
