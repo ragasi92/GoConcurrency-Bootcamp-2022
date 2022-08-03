@@ -34,40 +34,35 @@ func (l LocalStorage) Write(pokemons []models.Pokemon) error {
 	return nil
 }
 
-func (l LocalStorage) Read(ctx context.Context, cancel context.CancelFunc) <-chan models.Pokemon {
+func (l LocalStorage) Read(ctx context.Context) (<-chan models.Pokemon, error) {
 	file, fErr := os.Open(filePath)
 	if fErr != nil {
-		cancel()
-		return nil
+		return nil, fErr
 	}
 
-	return readRecords(file, ctx, cancel)
+	return readRecords(file, ctx), nil
 }
 
-func readRecords(r io.Reader, ctx context.Context, cancel context.CancelFunc) <-chan models.Pokemon {
+func readRecords(r io.Reader, ctx context.Context) <-chan models.Pokemon {
 	out := make(chan models.Pokemon)
-	go func(ctx context.Context, cancel context.CancelFunc) {
+	go func(ctx context.Context) {
 
 		reader := csv.NewReader(r)
 		_, err := reader.Read()
 		if err != nil {
-			cancel()
 			return
 		}
 		for {
 			record, err := reader.Read()
 			if err == io.EOF {
-				cancel()
 				break
 			}
 			if err != nil {
-				cancel()
 				continue
 			}
 
 			pokemon, err := parseCSVData(record)
 			if err != nil {
-				cancel()
 				continue
 			}
 
@@ -80,7 +75,7 @@ func readRecords(r io.Reader, ctx context.Context, cancel context.CancelFunc) <-
 
 		}
 		close(out)
-	}(ctx, cancel)
+	}(ctx)
 	return out
 
 }

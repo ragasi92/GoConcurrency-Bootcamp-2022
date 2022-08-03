@@ -9,7 +9,7 @@ import (
 )
 
 type reader interface {
-	Read(ctx context.Context, cancel context.CancelFunc) <-chan models.Pokemon
+	Read(ctx context.Context) (<-chan models.Pokemon, error)
 }
 
 // type reader interface {
@@ -39,16 +39,20 @@ func NewRefresher(reader reader, saver saver, fetcher fetcher) Refresher {
 	return Refresher{reader, saver, fetcher}
 }
 
-func readCSV(ctx context.Context, cancel context.CancelFunc, r Refresher) <-chan models.Pokemon {
+func readCSV(ctx context.Context, cancel context.CancelFunc, r Refresher) (<-chan models.Pokemon, error) {
 
-	return r.Read(ctx, cancel)
+	return r.Read(ctx)
 
 }
 
 func (r Refresher) Refresh(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 
-	savePokemon(ctx, cancel, buildPokemon(ctx, readCSV(ctx, cancel, r), r), r)
+	pokeChan, err := readCSV(ctx, cancel, r)
+	if err != nil {
+		return err
+	}
+	savePokemon(ctx, cancel, buildPokemon(ctx, pokeChan, r), r)
 
 	return nil
 }
