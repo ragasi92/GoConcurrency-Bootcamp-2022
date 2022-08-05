@@ -85,7 +85,7 @@ func readRecords(ctx context.Context, r io.Reader, wg sync.WaitGroup) (<-chan mo
 			case <-ctx.Done():
 				return
 			default:
-				out <- *pokemon
+				out <- pokemon
 			}
 
 		}
@@ -111,24 +111,25 @@ func buildRecords(pokemons []models.Pokemon) [][]string {
 	return records
 }
 
-func parseCSVData(record []string) (*models.Pokemon, error) {
+func parseCSVData(record []string) (models.Pokemon, error) {
 
+	pokemon := models.Pokemon{}
 	id, err := strconv.Atoi(record[0])
 	if err != nil {
-		return nil, err
+		return pokemon, err
 	}
 
 	height, err := strconv.Atoi(record[2])
 	if err != nil {
-		return nil, err
+		return pokemon, err
 	}
 
 	weight, err := strconv.Atoi(record[3])
 	if err != nil {
-		return nil, err
+		return pokemon, err
 	}
 
-	pokemon := &models.Pokemon{
+	pokemon = models.Pokemon{
 		ID:              id,
 		Name:            record[1],
 		Height:          height,
