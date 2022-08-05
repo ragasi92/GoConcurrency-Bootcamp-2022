@@ -17,25 +17,19 @@ type writer interface {
 }
 
 type Fetcher struct {
-	ctx     context.Context
 	api     api
 	storage writer
 }
 
-type PokeResult struct {
-	Error   error
-	Pokemon *models.Pokemon
+func NewFetcher(api api, storage writer) Fetcher {
+	return Fetcher{api, storage}
 }
 
-func NewFetcher(ctx context.Context, api api, storage writer) Fetcher {
-	return Fetcher{ctx, api, storage}
-}
-
-func (f Fetcher) Fetch(from, to int) error {
+func (f Fetcher) Fetch(ctx context.Context, from, to int) error {
 	var pokemons []models.Pokemon
-	ctx, cancel := context.WithCancel(f.ctx)
+	ctx, cancel := context.WithCancel(ctx)
 
-	pokeChannel := pokemonGeneretor(ctx, f, from, to)
+	pokeChannel := f.pokemonGeneretor(ctx, from, to)
 
 	for pokeResult := range pokeChannel {
 		if pokeResult.Error != nil && pokeResult.Pokemon == nil {
@@ -48,17 +42,17 @@ func (f Fetcher) Fetch(from, to int) error {
 	return f.storage.Write(pokemons)
 }
 
-func pokemonGeneretor(ctx context.Context, f Fetcher, from, to int) <-chan PokeResult {
-	pokemonChan := make(chan PokeResult)
+func (f Fetcher) pokemonGeneretor(ctx context.Context, from, to int) <-chan models.PokemonResult {
+	pokemonChan := make(chan models.PokemonResult)
 	wg := sync.WaitGroup{}
 
 	for id := from; id <= to; id++ {
 		wg.Add(1)
 		go func(ctx context.Context, f Fetcher, id int) {
 			defer wg.Done()
-			var result PokeResult
+			var result models.PokemonResult
 			pokemon, err := f.api.FetchPokemon(id)
-			result = PokeResult{Pokemon: &pokemon, Error: err}
+			result = models.PokemonResult{Pokemon: &pokemon, Error: err}
 			if err != nil {
 				result.Pokemon = nil
 

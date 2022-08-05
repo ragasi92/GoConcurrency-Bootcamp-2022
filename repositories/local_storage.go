@@ -5,9 +5,11 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"GoConcurrency-Bootcamp-2022/models"
 )
@@ -34,22 +36,33 @@ func (l LocalStorage) Write(pokemons []models.Pokemon) error {
 	return nil
 }
 
-func (l LocalStorage) Read(ctx context.Context) (<-chan models.Pokemon, error) {
+func (l LocalStorage) Read(ctx context.Context) (<-chan models.Pokemon, <-chan error, error) {
 	file, fErr := os.Open(filePath)
 	if fErr != nil {
-		return nil, fErr
+		return nil, nil, fErr
 	}
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-	return readRecords(file, ctx), nil
+	out, errc := readRecords(ctx, file, wg)
+
+	go func() {
+		wg.Wait()
+		file.Close()
+	}()
+	return out, errc, nil
 }
 
-func readRecords(r io.Reader, ctx context.Context) <-chan models.Pokemon {
+func readRecords(ctx context.Context, r io.Reader, wg sync.WaitGroup) (<-chan models.Pokemon, <-chan error) {
 	out := make(chan models.Pokemon)
+	errc := make(chan error, 1)
 	go func(ctx context.Context) {
-
+		defer close(errc)
+		defer close(out)
 		reader := csv.NewReader(r)
 		_, err := reader.Read()
 		if err != nil {
+			log.Println("err", err)
 			return
 		}
 		for {
@@ -58,12 +71,14 @@ func readRecords(r io.Reader, ctx context.Context) <-chan models.Pokemon {
 				break
 			}
 			if err != nil {
-				continue
+				errc <- err
+				return
 			}
 
 			pokemon, err := parseCSVData(record)
 			if err != nil {
-				continue
+				errc <- err
+				return
 			}
 
 			select {
@@ -74,9 +89,9 @@ func readRecords(r io.Reader, ctx context.Context) <-chan models.Pokemon {
 			}
 
 		}
-		close(out)
+		wg.Done()
 	}(ctx)
-	return out
+	return out, errc
 
 }
 
